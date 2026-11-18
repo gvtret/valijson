@@ -533,9 +533,19 @@ struct AdapterTraits
 // 3. std::istringstream      - fallback if neither of the above are available
 //
 
+// Detect effective C++ dialect. MSVC does not update __cplusplus unless
+// /Zc:__cplusplus is set, so prefer _MSVC_LANG when available.
+#if defined(_MSVC_LANG)
+#  define VALIJSON_DOUBLE_PARSER_CPLUSPLUS _MSVC_LANG
+#else
+#  define VALIJSON_DOUBLE_PARSER_CPLUSPLUS __cplusplus
+#endif
+
 // attempt detection of std::from_chars support
 #ifndef VALIJSON_HAS_STD_FROM_CHARS
-#  if defined(_MSC_VER) && _MSC_VER >= 1915
+#  if VALIJSON_DOUBLE_PARSER_CPLUSPLUS < 201703L
+#    define VALIJSON_HAS_STD_FROM_CHARS 0
+#  elif defined(_MSC_VER) && _MSC_VER >= 1915
 #    define VALIJSON_HAS_STD_FROM_CHARS 1
 #  elif defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 200000
 #    define VALIJSON_HAS_STD_FROM_CHARS 1
@@ -593,10 +603,251 @@ inline bool parseDouble(const std::string &input, double &result)
 } // namespace valijson
 #pragma once
 
+#include <utility>
+
+// Detect effective C++ dialect. MSVC does not update __cplusplus unless
+// /Zc:__cplusplus is set, so prefer _MSVC_LANG when available.
+#if defined(_MSVC_LANG)
+#  define VALIJSON_CPLUSPLUS _MSVC_LANG
+#else
+#  define VALIJSON_CPLUSPLUS __cplusplus
+#endif
+
+// Prefer std::optional under C++17+. Override with -DVALIJSON_USE_STD_OPTIONAL=0/1.
+#ifndef VALIJSON_USE_STD_OPTIONAL
+#  if VALIJSON_CPLUSPLUS >= 201703L
+#    define VALIJSON_USE_STD_OPTIONAL 1
+#  else
+#    define VALIJSON_USE_STD_OPTIONAL 0
+#  endif
+#endif
+
+#if VALIJSON_USE_STD_OPTIONAL
+
+#include <optional>
+
+namespace valijson {
+namespace internal {
+
+using std::make_optional;
+using std::nullopt;
+using std::optional;
+
+} // namespace internal
+} // namespace valijson
+
+#else
+
+#include <new>
+#include <type_traits>
+
+namespace valijson {
+namespace internal {
+
+struct nullopt_t
+{
+    explicit constexpr nullopt_t(int) {}
+};
+
+constexpr nullopt_t nullopt{0};
+
+template<typename T>
+class optional
+{
+public:
+    optional()
+      : m_engaged(false)
+    {
+    }
+
+    optional(nullopt_t)
+      : m_engaged(false)
+    {
+    }
+
+    optional(const T &value)
+      : m_engaged(false)
+    {
+        construct(value);
+    }
+
+    optional(T &&value)
+      : m_engaged(false)
+    {
+        construct(std::move(value));
+    }
+
+    optional(const optional &other)
+      : m_engaged(false)
+    {
+        if (other.m_engaged) {
+            construct(*other);
+        }
+    }
+
+    optional(optional &&other)
+      : m_engaged(false)
+    {
+        if (other.m_engaged) {
+            construct(std::move(*other));
+        }
+    }
+
+    ~optional()
+    {
+        reset();
+    }
+
+    optional &operator=(nullopt_t)
+    {
+        reset();
+        return *this;
+    }
+
+    optional &operator=(const optional &other)
+    {
+        if (this == &other) {
+            return *this;
+        }
+        if (other.m_engaged) {
+            if (m_engaged) {
+                **this = *other;
+            } else {
+                construct(*other);
+            }
+        } else {
+            reset();
+        }
+        return *this;
+    }
+
+    optional &operator=(optional &&other)
+    {
+        if (this == &other) {
+            return *this;
+        }
+        if (other.m_engaged) {
+            if (m_engaged) {
+                **this = std::move(*other);
+            } else {
+                construct(std::move(*other));
+            }
+        } else {
+            reset();
+        }
+        return *this;
+    }
+
+    optional &operator=(const T &value)
+    {
+        if (m_engaged) {
+            **this = value;
+        } else {
+            construct(value);
+        }
+        return *this;
+    }
+
+    optional &operator=(T &&value)
+    {
+        if (m_engaged) {
+            **this = std::move(value);
+        } else {
+            construct(std::move(value));
+        }
+        return *this;
+    }
+
+    bool has_value() const
+    {
+        return m_engaged;
+    }
+
+    explicit operator bool() const
+    {
+        return m_engaged;
+    }
+
+    T &operator*()
+    {
+        return *pointer();
+    }
+
+    const T &operator*() const
+    {
+        return *pointer();
+    }
+
+    T *operator->()
+    {
+        return pointer();
+    }
+
+    const T *operator->() const
+    {
+        return pointer();
+    }
+
+    void reset()
+    {
+        if (m_engaged) {
+            pointer()->~T();
+            m_engaged = false;
+        }
+    }
+
+private:
+    void construct(const T &value)
+    {
+        new (storage()) T(value);
+        m_engaged = true;
+    }
+
+    void construct(T &&value)
+    {
+        new (storage()) T(std::move(value));
+        m_engaged = true;
+    }
+
+    void *storage()
+    {
+        return static_cast<void *>(&m_storage);
+    }
+
+    const void *storage() const
+    {
+        return static_cast<const void *>(&m_storage);
+    }
+
+    T *pointer()
+    {
+        return static_cast<T *>(storage());
+    }
+
+    const T *pointer() const
+    {
+        return static_cast<const T *>(storage());
+    }
+
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type m_storage;
+    bool m_engaged;
+};
+
+template<typename T>
+optional<typename std::decay<T>::type> make_optional(T &&value)
+{
+    return optional<typename std::decay<T>::type>(std::forward<T>(value));
+}
+
+} // namespace internal
+} // namespace valijson
+
+#endif
+#pragma once
+
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <sstream>
 
 
@@ -849,7 +1100,7 @@ public:
         // effort of constructing an ArrayType instance if the value is
         // definitely an array.
         if (m_value.isArray()) {
-            const std::optional<Array> array = m_value.getArrayOptional();
+            const valijson::internal::optional<Array> array = m_value.getArrayOptional();
             for (const AdapterType element : *array) {
                 if (!fn(element)) {
                     return false;
@@ -867,7 +1118,7 @@ public:
         }
 
         if (m_value.isObject()) {
-            const std::optional<Object> object = m_value.getObjectOptional();
+            const valijson::internal::optional<Object> object = m_value.getObjectOptional();
             for (const ObjectMemberType member : *object) {
                 if (!fn(member.first, AdapterType(member.second))) {
                     return false;
@@ -1113,7 +1364,7 @@ public:
                 other.asString() == asString();
         } else if (isArray()) {
             if (other.isArray() && getArraySize() == other.getArraySize()) {
-                const std::optional<ArrayType> array = m_value.getArrayOptional();
+                const valijson::internal::optional<ArrayType> array = m_value.getArrayOptional();
                 if (array) {
                     ArrayComparisonFunctor fn(*array, strict);
                     return other.applyToArray(fn);
@@ -1123,7 +1374,7 @@ public:
             }
         } else if (isObject()) {
             if (other.isObject() && other.getObjectSize() == getObjectSize()) {
-                const std::optional<ObjectType> object = m_value.getObjectOptional();
+                const valijson::internal::optional<ObjectType> object = m_value.getObjectOptional();
                 if (object) {
                     ObjectComparisonFunctor fn(*object, strict);
                     return other.applyToObject(fn);
@@ -1152,7 +1403,7 @@ public:
      */
     ArrayType getArray() const
     {
-        std::optional<ArrayType> arrayValue = m_value.getArrayOptional();
+        valijson::internal::optional<ArrayType> arrayValue = m_value.getArrayOptional();
         if (arrayValue) {
             return *arrayValue;
         }
@@ -1261,7 +1512,7 @@ public:
      */
     ObjectType getObject() const
     {
-        std::optional<ObjectType> objectValue = m_value.getObjectOptional();
+        valijson::internal::optional<ObjectType> objectValue = m_value.getObjectOptional();
         if (objectValue) {
             return *objectValue;
         }
@@ -2149,7 +2400,6 @@ inline AdapterType resolveJsonPointerStrict(
 #endif
 #pragma once
 
-#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -2164,14 +2414,14 @@ namespace json_reference {
   *
   * @return  Optional string containing URI
   */
-inline std::optional<std::string> getJsonReferenceUri(
+inline valijson::internal::optional<std::string> getJsonReferenceUri(
     const std::string &jsonRef)
 {
     const size_t ptrPos = jsonRef.find('#');
     if (ptrPos == 0) {
         // The JSON Reference does not contain a URI, but might contain a
         // JSON Pointer that refers to the current document
-        return std::optional<std::string>();
+        return valijson::internal::optional<std::string>();
     } else if (ptrPos != std::string::npos) {
         // The JSON Reference contains a URI and possibly a JSON Pointer
         return jsonRef.substr(0, ptrPos);
@@ -2188,7 +2438,7 @@ inline std::optional<std::string> getJsonReferenceUri(
   *
   * @return  Optional string containing JSON Pointer
   */
-inline std::optional<std::string> getJsonReferencePointer(
+inline valijson::internal::optional<std::string> getJsonReferencePointer(
     const std::string &jsonRef)
 {
     // Attempt to extract JSON Pointer if '#' character is present. Note
@@ -2199,7 +2449,7 @@ inline std::optional<std::string> getJsonReferencePointer(
         return jsonRef.substr(ptrPos + 1);
     }
 
-    return std::optional<std::string>();
+    return valijson::internal::optional<std::string>();
 }
 
 } // namespace json_reference
@@ -2235,7 +2485,6 @@ using std::smatch;
 #pragma once
 
 #include <algorithm>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -2247,15 +2496,15 @@ namespace uri {
 /**
  * @brief  Check whether a URI is absolute, returns pos just past end if found
  */
-inline std::optional<size_t> parseScheme(const std::string &uri)
+inline valijson::internal::optional<size_t> parseScheme(const std::string &uri)
 {
     constexpr auto marker = "://";
 
     const auto pos = uri.find(marker);
 
     return pos == std::string::npos
-        ? std::nullopt
-        : std::make_optional<size_t>(pos + 3);
+        ? valijson::internal::nullopt
+        : valijson::internal::optional<size_t>(pos + 3);
 }
 
 /**
@@ -2598,7 +2847,6 @@ struct Constraint
 
 #include <functional>
 #include <memory>
-#include <optional>
 #include <vector>
 
 
@@ -2694,9 +2942,9 @@ public:
       , m_alwaysInvalid(false)
     {
         // explicitly initialise optionals. See: https://github.com/tristanpenman/valijson/issues/124
-        m_description = std::nullopt;
-        m_id = std::nullopt;
-        m_title = std::nullopt;
+        m_description = valijson::internal::nullopt;
+        m_id = valijson::internal::nullopt;
+        m_title = valijson::internal::nullopt;
     }
 
     /**
@@ -2917,13 +3165,13 @@ private:
     std::vector<Constraint::OwningPointer> m_constraints;
 
     /// Schema description (optional)
-    std::optional<std::string> m_description;
+    valijson::internal::optional<std::string> m_description;
 
     /// ID to apply when resolving the schema URI
-    std::optional<std::string> m_id;
+    valijson::internal::optional<std::string> m_id;
 
     /// Title string associated with the schema (optional)
-    std::optional<std::string> m_title;
+    valijson::internal::optional<std::string> m_title;
 };
 
 } // namespace valijson
@@ -4863,7 +5111,6 @@ public:
 
 #include <functional>
 #include <iostream>
-#include <optional>
 #include <vector>
 
 
@@ -4972,7 +5219,7 @@ public:
 #if VALIJSON_USE_EXCEPTIONS
         try {
 #endif
-            resolveThenPopulateSchema(schema, node, node, schema, std::optional<std::string>(), "", fetchDoc, nullptr,
+            resolveThenPopulateSchema(schema, node, node, schema, valijson::internal::optional<std::string>(), "", fetchDoc, nullptr,
                     nullptr, docCache, schemaRegistry);
 #if VALIJSON_USE_EXCEPTIONS
         } catch (...) {
@@ -5043,9 +5290,9 @@ private:
      * document URI should be used to replace the path, query and fragment
      * portions of URI provided by the resolution scope.
      */
-    virtual std::optional<std::string> resolveDocumentUri(
-            const std::optional<std::string>& resolutionScope,
-            const std::optional<std::string>& documentUri)
+    virtual valijson::internal::optional<std::string> resolveDocumentUri(
+            const valijson::internal::optional<std::string>& resolutionScope,
+            const valijson::internal::optional<std::string>& documentUri)
     {
         if (resolutionScope) {
             if (documentUri) {
@@ -5074,7 +5321,7 @@ private:
         } else {
             // (2) resolution scope not present, and document URI is relative or absent
             //      => document URI, if present, otherwise no result
-            // documentUri is already std::optional
+            // documentUri is already valijson::internal::optional
             return documentUri;
         }
     }
@@ -5111,7 +5358,7 @@ private:
     /**
      * Sanitise an optional JSON Pointer, trimming trailing slashes
      */
-    static std::string sanitiseJsonPointer(const std::optional<std::string>& input)
+    static std::string sanitiseJsonPointer(const valijson::internal::optional<std::string>& input)
     {
         if (input) {
             if (*input == "/") {
@@ -5147,8 +5394,8 @@ private:
         return m_version == kDraft7 ? "$id" : "id";
     }
 
-    std::optional<std::string> resolveId(
-            const std::optional<std::string> &currentScope,
+    valijson::internal::optional<std::string> resolveId(
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &id) const
     {
         if (!currentScope || internal::uri::isUriAbsolute(id) ||
@@ -5162,13 +5409,13 @@ private:
     template<typename AdapterType>
     bool findSchemaById(
             const AdapterType &node,
-            const std::optional<std::string> &currentScope,
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &targetUri,
             const std::string &nodePath,
             std::string &foundPath,
-            std::optional<std::string> &foundScope) const
+            valijson::internal::optional<std::string> &foundScope) const
     {
-        std::optional<std::string> updatedScope = currentScope;
+        valijson::internal::optional<std::string> updatedScope = currentScope;
 
         if (node.isObject()) {
             const typename AdapterType::Object object = node.asObject();
@@ -5209,17 +5456,17 @@ private:
     template<typename AdapterType>
     bool findScopeForPath(
             const AdapterType &node,
-            const std::optional<std::string> &currentScope,
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &targetPath,
             const std::string &nodePath,
-            std::optional<std::string> &foundScope) const
+            valijson::internal::optional<std::string> &foundScope) const
     {
         if (nodePath == targetPath) {
             foundScope = currentScope;
             return true;
         }
 
-        std::optional<std::string> updatedScope = currentScope;
+        valijson::internal::optional<std::string> updatedScope = currentScope;
 
         if (node.isObject()) {
             const typename AdapterType::Object object = node.asObject();
@@ -5338,7 +5585,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -5383,7 +5630,7 @@ private:
 
         // Returns a document URI if the reference points somewhere
         // other than the current document
-        const std::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
+        const valijson::internal::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
 
         // Extract JSON Pointer from JSON Reference, with any trailing
         // slashes removed so that keys in the schema registry end
@@ -5395,7 +5642,7 @@ private:
         // scope. An absolute document URI will take precedence when
         // present, otherwise we need to resolve the URI relative to
         // the current resolution scope
-        const std::optional<std::string> actualDocumentUri = resolveDocumentUri(currentScope, documentUri);
+        const valijson::internal::optional<std::string> actualDocumentUri = resolveDocumentUri(currentScope, documentUri);
 
         // Construct a key to search the schema registry for an existing schema
         const std::string queryKey = actualDocumentUri ? (*actualDocumentUri + actualJsonPointer) : actualJsonPointer;
@@ -5405,7 +5652,7 @@ private:
                     (*actualDocumentUri + "#" + actualJsonPointer) :
                     ("#" + actualJsonPointer);
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, idRef,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -5440,7 +5687,7 @@ private:
 
         if (actualDocumentUri && (!currentScope || *actualDocumentUri != *currentScope)) {
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, *actualDocumentUri,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -5451,7 +5698,7 @@ private:
                         : internal::json_pointer::resolveJsonPointerStrict(
                                 registeredRoot, actualJsonPointer);
 
-                std::optional<std::string> referencedScope = registeredScope;
+                valijson::internal::optional<std::string> referencedScope = registeredScope;
                 if (!actualJsonPointer.empty()) {
                     findScopeForPath(registeredRoot, registeredScope,
                             actualJsonPointer, "", referencedScope);
@@ -5529,7 +5776,7 @@ private:
 
         newRegistryKeys.push_back(queryKey);
 
-        std::optional<std::string> referencedScope = currentScope;
+        valijson::internal::optional<std::string> referencedScope = currentScope;
         findScopeForPath(rootNode, currentScope, actualJsonPointer, "",
                 referencedScope);
 
@@ -5573,7 +5820,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -5620,7 +5867,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType &node,
         const Subschema &subschema,
-        const std::optional<std::string>& currentScope,
+        const valijson::internal::optional<std::string>& currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -5658,7 +5905,7 @@ private:
         typename AdapterType::Object::const_iterator itr(object.end());
 
         // Check for schema identifier attribute and update current scope.
-        std::optional<std::string> updatedScope;
+        valijson::internal::optional<std::string> updatedScope;
         bool foundId = false;
         if ((itr = object.find(idKeyword())) != object.end() && itr->second.maybeString()) {
             foundId = true;
@@ -5971,7 +6218,7 @@ private:
         if ((itr = object.find("required")) != object.end()) {
             if (m_version == kDraft3) {
                 if (parentSubschema && ownName) {
-                    std::optional<constraints::RequiredConstraint> constraint =
+                    valijson::internal::optional<constraints::RequiredConstraint> constraint =
                             makeRequiredConstraintForSelf(itr->second, *ownName);
                     if (constraint) {
                         rootSchema.addConstraintToSubschema(*constraint, parentSubschema);
@@ -5993,7 +6240,7 @@ private:
         }
 
         if ((itr = object.find("uniqueItems")) != object.end()) {
-            std::optional<constraints::UniqueItemsConstraint> constraint = makeUniqueItemsConstraint(itr->second);
+            valijson::internal::optional<constraints::UniqueItemsConstraint> constraint = makeUniqueItemsConstraint(itr->second);
             if (constraint) {
                 rootSchema.addConstraintToSubschema(*constraint, &subschema);
             }
@@ -6049,7 +6296,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType &node,
         const Subschema &subschema,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSchema,
@@ -6066,13 +6313,13 @@ private:
 
         // Returns a document URI if the reference points somewhere
         // other than the current document
-        const std::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
+        const valijson::internal::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
 
         // Extract JSON Pointer from JSON Reference
         const std::string actualJsonPointer = sanitiseJsonPointer(
                 internal::json_reference::getJsonReferencePointer(jsonRef));
 
-        const std::optional<std::string> actualDocumentUri =
+        const valijson::internal::optional<std::string> actualDocumentUri =
                 resolveDocumentUri(currentScope, documentUri);
 
         if (!actualJsonPointer.empty() && actualJsonPointer[0] != '/') {
@@ -6080,7 +6327,7 @@ private:
                     (*actualDocumentUri + "#" + actualJsonPointer) :
                     ("#" + actualJsonPointer);
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, idRef,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -6097,7 +6344,7 @@ private:
 
         if (actualDocumentUri && (!currentScope || *actualDocumentUri != *currentScope)) {
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, *actualDocumentUri,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -6146,7 +6393,7 @@ private:
             const AdapterType &referencedAdapter =
                     internal::json_pointer::resolveJsonPointerStrict(rootNode, actualJsonPointer);
 
-            std::optional<std::string> referencedScope = currentScope;
+            valijson::internal::optional<std::string> referencedScope = currentScope;
             findScopeForPath(rootNode, currentScope, actualJsonPointer, "",
                     referencedScope);
 
@@ -6181,7 +6428,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6222,7 +6469,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6282,7 +6529,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6347,7 +6594,7 @@ private:
         const AdapterType &ifNode,
         const AdapterType *thenNode,
         const AdapterType *elseNode,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6422,7 +6669,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &contains,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &containsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6490,7 +6737,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6644,7 +6891,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType *items,
         const AdapterType *additionalItems,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &itemsPath,
         const std::string &additionalItemsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
@@ -6740,7 +6987,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &items,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &itemsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -6844,7 +7091,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxItemsConstraint constraint;
-                constraint.setMaxItems(value);
+                constraint.setMaxItems(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6868,7 +7115,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxLengthConstraint constraint;
-                constraint.setMaxLength(value);
+                constraint.setMaxLength(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6894,7 +7141,7 @@ private:
             int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MaxPropertiesConstraint constraint;
-                constraint.setMaxProperties(value);
+                constraint.setMaxProperties(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6972,7 +7219,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinItemsConstraint constraint;
-                constraint.setMinItems(value);
+                constraint.setMinItems(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -6995,7 +7242,7 @@ private:
             const int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinLengthConstraint constraint;
-                constraint.setMinLength(value);
+                constraint.setMinLength(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -7021,7 +7268,7 @@ private:
             int64_t value = node.asInteger();
             if (value >= 0) {
                 constraints::MinPropertiesConstraint constraint;
-                constraint.setMinProperties(value);
+                constraint.setMinProperties(static_cast<uint64_t>(value));
                 return constraint;
             }
         }
@@ -7083,7 +7330,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -7123,7 +7370,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -7205,7 +7452,7 @@ private:
         const AdapterType *properties,
         const AdapterType *patternProperties,
         const AdapterType *additionalProperties,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &propertiesPath,
         const std::string &patternPropertiesPath,
         const std::string &additionalPropertiesPath,
@@ -7286,7 +7533,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &currentNode,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -7312,7 +7559,7 @@ private:
      *          caller
      */
     template<typename AdapterType>
-    std::optional<constraints::RequiredConstraint>
+    valijson::internal::optional<constraints::RequiredConstraint>
             makeRequiredConstraintForSelf(const AdapterType &node,
                     const std::string &name)
     {
@@ -7326,7 +7573,7 @@ private:
             return constraint;
         }
 
-        return std::optional<constraints::RequiredConstraint>();
+        return valijson::internal::optional<constraints::RequiredConstraint>();
     }
 
     /**
@@ -7379,7 +7626,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -7442,7 +7689,7 @@ private:
      *          the caller, or nullptr if the boolean value is false.
      */
     template<typename AdapterType>
-    std::optional<constraints::UniqueItemsConstraint> makeUniqueItemsConstraint(const AdapterType &node)
+    valijson::internal::optional<constraints::UniqueItemsConstraint> makeUniqueItemsConstraint(const AdapterType &node)
     {
         if (node.isBool() || node.maybeBool()) {
             // If the boolean value is true, this function will return a pointer
@@ -7451,7 +7698,7 @@ private:
             if (node.asBool()) {
                 return constraints::UniqueItemsConstraint();
             } else {
-                return std::optional<constraints::UniqueItemsConstraint>();
+                return valijson::internal::optional<constraints::UniqueItemsConstraint>();
             }
         }
 
@@ -10212,7 +10459,6 @@ using Validator = ValidatorT<DefaultRegexEngine>;
 #pragma once
 
 #include <cmath>
-#include <optional>
 #include <string>
 #include <nlohmann/json.hpp>
 
@@ -10648,15 +10894,15 @@ public:
      * @brief   Optionally return a NlohmannJsonArray instance.
      *
      * If the referenced NlohmannJson value is an array, this function will return
-     * a std::optional containing a NlohmannJsonArray instance referencing the
+     * a valijson::internal::optional containing a NlohmannJsonArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<NlohmannJsonArray<ValueType>> getArrayOptional() const
+    valijson::internal::optional<NlohmannJsonArray<ValueType>> getArrayOptional() const
     {
         if (m_value.is_array()) {
-            return std::make_optional(NlohmannJsonArray<ValueType>(m_value));
+            return valijson::internal::make_optional(NlohmannJsonArray<ValueType>(m_value));
         }
 
         return {};
@@ -10717,12 +10963,12 @@ public:
      * @brief   Optionally return a NlohmannJsonObject instance.
      *
      * If the referenced NlohmannJson value is an object, this function will return a
-     * std::optional containing a NlohmannJsonObject instance referencing the
+     * valijson::internal::optional containing a NlohmannJsonObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<NlohmannJsonObject> getObjectOptional() const;
+    valijson::internal::optional<NlohmannJsonObject> getObjectOptional() const;
 
     /**
      * @brief   Retrieve the number of members in the object
@@ -10856,11 +11102,11 @@ public:
 };
 
 template <class ValueType>
-std::optional<NlohmannJsonObject>
+valijson::internal::optional<NlohmannJsonObject>
 NlohmannJsonValue<ValueType>::getObjectOptional() const
 {
     if (m_value.is_object()) {
-        return std::make_optional(NlohmannJsonObject(m_value));
+        return valijson::internal::make_optional(NlohmannJsonObject(m_value));
     }
 
     return {};
