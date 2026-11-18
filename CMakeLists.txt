@@ -5,7 +5,13 @@ if(POLICY CMP0167)
     cmake_policy(SET CMP0167 OLD)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(valijson_CXX_STANDARD 11 CACHE STRING "C++ standard for valijson (11 or 17)")
+set_property(CACHE valijson_CXX_STANDARD PROPERTY STRINGS 11 17)
+if(NOT valijson_CXX_STANDARD STREQUAL "11" AND NOT valijson_CXX_STANDARD STREQUAL "17")
+    message(FATAL_ERROR "valijson_CXX_STANDARD must be 11 or 17 (got '${valijson_CXX_STANDARD}')")
+endif()
+
+set(CMAKE_CXX_STANDARD ${valijson_CXX_STANDARD})
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -35,7 +41,7 @@ add_library(valijson INTERFACE)
 # despite of valijson target is imported or not
 add_library(ValiJSON::valijson ALIAS valijson)
 
-target_compile_features(valijson INTERFACE cxx_std_17)
+target_compile_features(valijson INTERFACE cxx_std_${valijson_CXX_STANDARD})
 
 include(GNUInstallDirs)
 target_include_directories(valijson INTERFACE
@@ -232,7 +238,8 @@ if(valijson_BUILD_TESTS)
     if(valijson_QT_CORE_TARGET)
         list(APPEND TEST_LIBS ${valijson_QT_CORE_TARGET})
         list(APPEND TEST_SOURCES tests/test_qtjson_adapter.cpp)
-        if(QT_VERSION_MAJOR GREATER_EQUAL 6)
+        # qvariant_adapter is Qt6-only and therefore C++17-only.
+        if(QT_VERSION_MAJOR GREATER_EQUAL 6 AND valijson_CXX_STANDARD STREQUAL "17")
             list(APPEND TEST_SOURCES tests/test_qvariant_adapter.cpp)
         endif()
     elseif(valijson_REQUIRE_ALL_ADAPTER_TESTS)
@@ -244,6 +251,32 @@ if(valijson_BUILD_TESTS)
     add_executable(test_suite ${TEST_SOURCES})
     add_executable(test_rapidjson_crt_allocator
         tests/test_rapidjson_crt_allocator.cpp)
+    # Optional shim contracts: same source, built once as C++11 and once as C++17.
+    add_executable(test_optional_compat_cxx11
+        tests/test_optional_compat.cpp)
+    add_executable(test_optional_compat_cxx17
+        tests/test_optional_compat.cpp)
+    set_target_properties(test_optional_compat_cxx11 PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    set_target_properties(test_optional_compat_cxx17 PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    # Always smoke-compile core headers + representative adapters as C++11.
+    add_executable(test_cxx11_smoke
+        tests/test_cxx11_smoke.cpp)
+    set_target_properties(test_cxx11_smoke PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+    target_link_libraries(test_cxx11_smoke jsoncpp)
+    # CRT-allocator contract stays on C++17 (standalone compile-time check).
+    set_target_properties(test_rapidjson_crt_allocator PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
     if(NOT valijson_USE_EXCEPTIONS)
         if(MSVC)
             if(CMAKE_CXX_FLAGS MATCHES "/EHsc ")
@@ -259,7 +292,7 @@ if(valijson_BUILD_TESTS)
     if(NOT MSVC)
         set_target_properties(test_suite PROPERTIES
             COMPILE_FLAGS " -pedantic -Werror -Wshadow -Wunused"
-            CXX_STANDARD 17
+            CXX_STANDARD ${valijson_CXX_STANDARD}
         )
     endif()
 
@@ -336,9 +369,12 @@ if(valijson_BUILD_EXAMPLES)
         examples/remote_resolution_local_file.cpp
     )
 
-    add_executable(valijson_benchmark
-        examples/valijson_benchmark.cpp
-    )
+    # Uses std::filesystem; only available when building as C++17.
+    if(valijson_CXX_STANDARD STREQUAL "17")
+        add_executable(valijson_benchmark
+            examples/valijson_benchmark.cpp
+        )
+    endif()
 
     add_executable(valijson_nlohmann_bundled_test
         examples/valijson_nlohmann_bundled_test.cpp

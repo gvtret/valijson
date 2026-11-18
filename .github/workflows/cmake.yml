@@ -12,7 +12,7 @@ env:
 
 jobs:
   build:
-    name: Build (${{ matrix.compiler.name }})
+    name: Build (${{ matrix.compiler.name }}, C++${{ matrix.compiler.cxx_standard }})
     runs-on: ubuntu-24.04
 
     strategy:
@@ -25,6 +25,15 @@ jobs:
             repository: ''
             fast_float: OFF
             qt_package: qtbase5-dev
+            cxx_standard: '17'
+          - name: GCC (Qt 5, C++11)
+            cc: gcc
+            cxx: g++
+            package: ''
+            repository: ''
+            fast_float: OFF
+            qt_package: qtbase5-dev
+            cxx_standard: '11'
           - name: GCC (Qt 6)
             cc: gcc
             cxx: g++
@@ -32,6 +41,7 @@ jobs:
             repository: ''
             fast_float: OFF
             qt_package: qt6-base-dev
+            cxx_standard: '17'
           - name: LLVM 19 (fast_float)
             cc: clang-19
             cxx: clang++-19
@@ -39,6 +49,7 @@ jobs:
             repository: ''
             fast_float: ON
             qt_package: qtbase5-dev
+            cxx_standard: '17'
           - name: LLVM 19 (istringstream)
             cc: clang-19
             cxx: clang++-19
@@ -46,6 +57,7 @@ jobs:
             repository: ''
             fast_float: OFF
             qt_package: qtbase5-dev
+            cxx_standard: '17'
           - name: LLVM 22
             cc: clang-22
             cxx: clang++-22
@@ -53,6 +65,7 @@ jobs:
             repository: llvm-toolchain-noble-22
             fast_float: OFF
             qt_package: qtbase5-dev
+            cxx_standard: '17'
 
     env:
       CC: ${{ matrix.compiler.cc }}
@@ -84,18 +97,24 @@ jobs:
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dvalijson_BUILD_TESTS=ON -Dvalijson_BUILD_EXAMPLES=ON -Dvalijson_REQUIRE_ALL_ADAPTER_TESTS=ON -Dvalijson_USE_FAST_FLOAT=${{matrix.compiler.fast_float}}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -Dvalijson_BUILD_TESTS=ON -Dvalijson_BUILD_EXAMPLES=ON -Dvalijson_REQUIRE_ALL_ADAPTER_TESTS=ON -Dvalijson_USE_FAST_FLOAT=${{matrix.compiler.fast_float}} -Dvalijson_CXX_STANDARD=${{matrix.compiler.cxx_standard}}
 
     - name: Build
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j$(nproc)
 
     - name: Configure Inspector
+      if: matrix.compiler.cxx_standard == '17'
       run: cmake -S ${{github.workspace}}/inspector -B ${{github.workspace}}/inspector/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build Inspector
+      if: matrix.compiler.cxx_standard == '17'
       run: cmake --build ${{github.workspace}}/inspector/build --config ${{env.BUILD_TYPE}} -j$(nproc)
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ./test_suite
+      run: |
+        ./test_optional_compat_cxx11
+        ./test_optional_compat_cxx17
+        ./test_cxx11_smoke
+        ./test_suite

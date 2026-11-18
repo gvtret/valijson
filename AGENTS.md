@@ -2,7 +2,7 @@
 
 This project provides a C++ header-only JSON Schema validator that can be used with various different JSON parsers. It supports draft 7 of the JSON Schema specification.
 
-The current branch targets wide C++17 compatibility.
+The library supports dual C++11 / C++17 dialects from a single header tree. Configure with `-Dvalijson_CXX_STANDARD=11` or `17` (default `11`).
 
 ## Architecture
 
@@ -16,7 +16,8 @@ These rules are distilled from real bugs fixed in recent PRs. Follow them when m
 
 ### Portability comes first
 
-- The library must build on a wide range of compilers and standard libraries (old GCC/libstdc++, libc++, MSVC). Do not introduce a C++17 feature without checking it is supported everywhere — e.g. `std::from_chars` for floating-point types is missing from older standard libraries, which is why `internal/double_parser.hpp` exists with three fallback implementations.
+- The library must build on a wide range of compilers and standard libraries (old GCC/libstdc++, libc++, MSVC) under both C++11 and C++17. Do not introduce a C++14/17 language or library feature in `include/valijson` without a dialect-safe fallback — e.g. `std::from_chars` is gated in `internal/double_parser.hpp`, and `std::optional` is accessed only via `internal/optional.hpp`.
+- Never spell `std::optional`, `std::nullopt`, `std::make_optional`, `std::string_view`, `std::variant`, `if constexpr`, or `std::is_*_v` directly in library headers. Use `valijson::internal::optional` / `nullopt` / `make_optional`, and ordinary `if` with `std::is_same<...>::value`. Compat shims under `include/valijson/internal/` are the only place allowed to include `<optional>` / `<charconv>` or inspect `__cplusplus` / `_MSVC_LANG` for dialect selection.
 - Never parse or format numbers in a locale-dependent way. Do not use `std::stod`, `strtod`, `atof`, or stream extraction without an imbued classic locale. Use `valijson::internal` helpers (e.g. `double_parser.hpp`) instead.
 
 ### Exceptions may be disabled
@@ -65,5 +66,7 @@ A robust test suite is included in the `tests` directory. This includes a range 
 The project is designed to be used with CMake. Configure with `-Dvalijson_BUILD_TESTS=1` to ensure that tests are built.
 
 Configure with `-Dvalijson_BUILD_EXAMPLES=1` when examples are being worked on.
+
+Configure with `-Dvalijson_CXX_STANDARD=11` or `-Dvalijson_CXX_STANDARD=17` to select the language standard (default `11`). CI keeps most jobs on explicit `17` and includes at least one `11` leg with `test_optional_compat` / `test_cxx11_smoke`.
 
 When running `scripts/test.sh` for individual requests, use the script's default `build` directory. It is not necessary to create temporary build directories unless the request specifically requires a separate build tree.
