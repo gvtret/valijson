@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <memory>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <vector>
 
 #include <valijson/constraints/constraint.hpp>
@@ -100,9 +100,9 @@ public:
       , m_alwaysInvalid(false)
     {
         // explicitly initialise optionals. See: https://github.com/tristanpenman/valijson/issues/124
-        m_description = std::nullopt;
-        m_id = std::nullopt;
-        m_title = std::nullopt;
+        m_description = valijson::internal::nullopt;
+        m_id = valijson::internal::nullopt;
+        m_title = valijson::internal::nullopt;
     }
 
     /**
@@ -323,13 +323,13 @@ private:
     std::vector<Constraint::OwningPointer> m_constraints;
 
     /// Schema description (optional)
-    std::optional<std::string> m_description;
+    valijson::internal::optional<std::string> m_description;
 
     /// ID to apply when resolving the schema URI
-    std::optional<std::string> m_id;
+    valijson::internal::optional<std::string> m_id;
 
     /// Title string associated with the schema (optional)
-    std::optional<std::string> m_title;
+    valijson::internal::optional<std::string> m_title;
 };
 
 } // namespace valijson

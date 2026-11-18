@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <vector>
 
@@ -14,15 +14,15 @@ namespace uri {
 /**
  * @brief  Check whether a URI is absolute, returns pos just past end if found
  */
-inline std::optional<size_t> parseScheme(const std::string &uri)
+inline valijson::internal::optional<size_t> parseScheme(const std::string &uri)
 {
     constexpr auto marker = "://";
 
     const auto pos = uri.find(marker);
 
     return pos == std::string::npos
-        ? std::nullopt
-        : std::make_optional<size_t>(pos + 3);
+        ? valijson::internal::nullopt
+        : valijson::internal::optional<size_t>(pos + 3);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <iostream>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <vector>
 
 #include <valijson/constraints/concrete_constraints.hpp>
@@ -121,7 +121,7 @@ public:
 #if VALIJSON_USE_EXCEPTIONS
         try {
 #endif
-            resolveThenPopulateSchema(schema, node, node, schema, std::optional<std::string>(), "", fetchDoc, nullptr,
+            resolveThenPopulateSchema(schema, node, node, schema, valijson::internal::optional<std::string>(), "", fetchDoc, nullptr,
                     nullptr, docCache, schemaRegistry);
 #if VALIJSON_USE_EXCEPTIONS
         } catch (...) {
@@ -192,9 +192,9 @@ private:
      * document URI should be used to replace the path, query and fragment
      * portions of URI provided by the resolution scope.
      */
-    virtual std::optional<std::string> resolveDocumentUri(
-            const std::optional<std::string>& resolutionScope,
-            const std::optional<std::string>& documentUri)
+    virtual valijson::internal::optional<std::string> resolveDocumentUri(
+            const valijson::internal::optional<std::string>& resolutionScope,
+            const valijson::internal::optional<std::string>& documentUri)
     {
         if (resolutionScope) {
             if (documentUri) {
@@ -223,7 +223,7 @@ private:
         } else {
             // (2) resolution scope not present, and document URI is relative or absent
             //      => document URI, if present, otherwise no result
-            // documentUri is already std::optional
+            // documentUri is already valijson::internal::optional
             return documentUri;
         }
     }
@@ -260,7 +260,7 @@ private:
     /**
      * Sanitise an optional JSON Pointer, trimming trailing slashes
      */
-    static std::string sanitiseJsonPointer(const std::optional<std::string>& input)
+    static std::string sanitiseJsonPointer(const valijson::internal::optional<std::string>& input)
     {
         if (input) {
             if (*input == "/") {
@@ -296,8 +296,8 @@ private:
         return m_version == kDraft7 ? "$id" : "id";
     }
 
-    std::optional<std::string> resolveId(
-            const std::optional<std::string> &currentScope,
+    valijson::internal::optional<std::string> resolveId(
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &id) const
     {
         if (!currentScope || internal::uri::isUriAbsolute(id) ||
@@ -311,13 +311,13 @@ private:
     template<typename AdapterType>
     bool findSchemaById(
             const AdapterType &node,
-            const std::optional<std::string> &currentScope,
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &targetUri,
             const std::string &nodePath,
             std::string &foundPath,
-            std::optional<std::string> &foundScope) const
+            valijson::internal::optional<std::string> &foundScope) const
     {
-        std::optional<std::string> updatedScope = currentScope;
+        valijson::internal::optional<std::string> updatedScope = currentScope;
 
         if (node.isObject()) {
             const typename AdapterType::Object object = node.asObject();
@@ -358,17 +358,17 @@ private:
     template<typename AdapterType>
     bool findScopeForPath(
             const AdapterType &node,
-            const std::optional<std::string> &currentScope,
+            const valijson::internal::optional<std::string> &currentScope,
             const std::string &targetPath,
             const std::string &nodePath,
-            std::optional<std::string> &foundScope) const
+            valijson::internal::optional<std::string> &foundScope) const
     {
         if (nodePath == targetPath) {
             foundScope = currentScope;
             return true;
         }
 
-        std::optional<std::string> updatedScope = currentScope;
+        valijson::internal::optional<std::string> updatedScope = currentScope;
 
         if (node.isObject()) {
             const typename AdapterType::Object object = node.asObject();
@@ -487,7 +487,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -532,7 +532,7 @@ private:
 
         // Returns a document URI if the reference points somewhere
         // other than the current document
-        const std::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
+        const valijson::internal::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
 
         // Extract JSON Pointer from JSON Reference, with any trailing
         // slashes removed so that keys in the schema registry end
@@ -544,7 +544,7 @@ private:
         // scope. An absolute document URI will take precedence when
         // present, otherwise we need to resolve the URI relative to
         // the current resolution scope
-        const std::optional<std::string> actualDocumentUri = resolveDocumentUri(currentScope, documentUri);
+        const valijson::internal::optional<std::string> actualDocumentUri = resolveDocumentUri(currentScope, documentUri);
 
         // Construct a key to search the schema registry for an existing schema
         const std::string queryKey = actualDocumentUri ? (*actualDocumentUri + actualJsonPointer) : actualJsonPointer;
@@ -554,7 +554,7 @@ private:
                     (*actualDocumentUri + "#" + actualJsonPointer) :
                     ("#" + actualJsonPointer);
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, idRef,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -589,7 +589,7 @@ private:
 
         if (actualDocumentUri && (!currentScope || *actualDocumentUri != *currentScope)) {
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, *actualDocumentUri,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -600,7 +600,7 @@ private:
                         : internal::json_pointer::resolveJsonPointerStrict(
                                 registeredRoot, actualJsonPointer);
 
-                std::optional<std::string> referencedScope = registeredScope;
+                valijson::internal::optional<std::string> referencedScope = registeredScope;
                 if (!actualJsonPointer.empty()) {
                     findScopeForPath(registeredRoot, registeredScope,
                             actualJsonPointer, "", referencedScope);
@@ -678,7 +678,7 @@ private:
 
         newRegistryKeys.push_back(queryKey);
 
-        std::optional<std::string> referencedScope = currentScope;
+        valijson::internal::optional<std::string> referencedScope = currentScope;
         findScopeForPath(rootNode, currentScope, actualJsonPointer, "",
                 referencedScope);
 
@@ -722,7 +722,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -769,7 +769,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType &node,
         const Subschema &subschema,
-        const std::optional<std::string>& currentScope,
+        const valijson::internal::optional<std::string>& currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSubschema,
@@ -807,7 +807,7 @@ private:
         typename AdapterType::Object::const_iterator itr(object.end());
 
         // Check for schema identifier attribute and update current scope.
-        std::optional<std::string> updatedScope;
+        valijson::internal::optional<std::string> updatedScope;
         bool foundId = false;
         if ((itr = object.find(idKeyword())) != object.end() && itr->second.maybeString()) {
             foundId = true;
@@ -1120,7 +1120,7 @@ private:
         if ((itr = object.find("required")) != object.end()) {
             if (m_version == kDraft3) {
                 if (parentSubschema && ownName) {
-                    std::optional<constraints::RequiredConstraint> constraint =
+                    valijson::internal::optional<constraints::RequiredConstraint> constraint =
                             makeRequiredConstraintForSelf(itr->second, *ownName);
                     if (constraint) {
                         rootSchema.addConstraintToSubschema(*constraint, parentSubschema);
@@ -1142,7 +1142,7 @@ private:
         }
 
         if ((itr = object.find("uniqueItems")) != object.end()) {
-            std::optional<constraints::UniqueItemsConstraint> constraint = makeUniqueItemsConstraint(itr->second);
+            valijson::internal::optional<constraints::UniqueItemsConstraint> constraint = makeUniqueItemsConstraint(itr->second);
             if (constraint) {
                 rootSchema.addConstraintToSubschema(*constraint, &subschema);
             }
@@ -1198,7 +1198,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType &node,
         const Subschema &subschema,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         const Subschema *parentSchema,
@@ -1215,13 +1215,13 @@ private:
 
         // Returns a document URI if the reference points somewhere
         // other than the current document
-        const std::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
+        const valijson::internal::optional<std::string> documentUri = internal::json_reference::getJsonReferenceUri(jsonRef);
 
         // Extract JSON Pointer from JSON Reference
         const std::string actualJsonPointer = sanitiseJsonPointer(
                 internal::json_reference::getJsonReferencePointer(jsonRef));
 
-        const std::optional<std::string> actualDocumentUri =
+        const valijson::internal::optional<std::string> actualDocumentUri =
                 resolveDocumentUri(currentScope, documentUri);
 
         if (!actualJsonPointer.empty() && actualJsonPointer[0] != '/') {
@@ -1229,7 +1229,7 @@ private:
                     (*actualDocumentUri + "#" + actualJsonPointer) :
                     ("#" + actualJsonPointer);
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, idRef,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -1246,7 +1246,7 @@ private:
 
         if (actualDocumentUri && (!currentScope || *actualDocumentUri != *currentScope)) {
             std::string registeredPath;
-            std::optional<std::string> registeredScope;
+            valijson::internal::optional<std::string> registeredScope;
             if (findSchemaById(rootNode, currentScope, *actualDocumentUri,
                         "", registeredPath, registeredScope)) {
                 const AdapterType registeredRoot =
@@ -1295,7 +1295,7 @@ private:
             const AdapterType &referencedAdapter =
                     internal::json_pointer::resolveJsonPointerStrict(rootNode, actualJsonPointer);
 
-            std::optional<std::string> referencedScope = currentScope;
+            valijson::internal::optional<std::string> referencedScope = currentScope;
             findScopeForPath(rootNode, currentScope, actualJsonPointer, "",
                     referencedScope);
 
@@ -1330,7 +1330,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1371,7 +1371,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1431,7 +1431,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1496,7 +1496,7 @@ private:
         const AdapterType &ifNode,
         const AdapterType *thenNode,
         const AdapterType *elseNode,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1571,7 +1571,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &contains,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &containsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1639,7 +1639,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -1793,7 +1793,7 @@ private:
         const AdapterType &rootNode,
         const AdapterType *items,
         const AdapterType *additionalItems,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &itemsPath,
         const std::string &additionalItemsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
@@ -1889,7 +1889,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &items,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &itemsPath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -2232,7 +2232,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -2272,7 +2272,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -2354,7 +2354,7 @@ private:
         const AdapterType *properties,
         const AdapterType *patternProperties,
         const AdapterType *additionalProperties,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &propertiesPath,
         const std::string &patternPropertiesPath,
         const std::string &additionalPropertiesPath,
@@ -2435,7 +2435,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &currentNode,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -2461,7 +2461,7 @@ private:
      *          caller
      */
     template<typename AdapterType>
-    std::optional<constraints::RequiredConstraint>
+    valijson::internal::optional<constraints::RequiredConstraint>
             makeRequiredConstraintForSelf(const AdapterType &node,
                     const std::string &name)
     {
@@ -2475,7 +2475,7 @@ private:
             return constraint;
         }
 
-        return std::optional<constraints::RequiredConstraint>();
+        return valijson::internal::optional<constraints::RequiredConstraint>();
     }
 
     /**
@@ -2528,7 +2528,7 @@ private:
         Schema &rootSchema,
         const AdapterType &rootNode,
         const AdapterType &node,
-        const std::optional<std::string> currentScope,
+        const valijson::internal::optional<std::string> currentScope,
         const std::string &nodePath,
         const typename FunctionPtrs<AdapterType>::FetchDoc fetchDoc,
         typename DocumentCache<AdapterType>::Type &docCache,
@@ -2591,7 +2591,7 @@ private:
      *          the caller, or nullptr if the boolean value is false.
      */
     template<typename AdapterType>
-    std::optional<constraints::UniqueItemsConstraint> makeUniqueItemsConstraint(const AdapterType &node)
+    valijson::internal::optional<constraints::UniqueItemsConstraint> makeUniqueItemsConstraint(const AdapterType &node)
     {
         if (node.isBool() || node.maybeBool()) {
             // If the boolean value is true, this function will return a pointer
@@ -2600,7 +2600,7 @@ private:
             if (node.asBool()) {
                 return constraints::UniqueItemsConstraint();
             } else {
-                return std::optional<constraints::UniqueItemsConstraint>();
+                return valijson::internal::optional<constraints::UniqueItemsConstraint>();
             }
         }
 

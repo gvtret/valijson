@@ -26,7 +26,7 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <iterator>
 
@@ -270,15 +270,15 @@ public:
      * @brief   Optionally return a JsonCppArray instance.
      *
      * If the referenced JsonCpp value is an array, this function will return a
-     * std::optional containing a JsonCppArray instance referencing the
+     * valijson::internal::optional containing a JsonCppArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<JsonCppArray> getArrayOptional() const
+    valijson::internal::optional<JsonCppArray> getArrayOptional() const
     {
         if (m_value.isArray()) {
-            return std::make_optional(JsonCppArray(m_value));
+            return valijson::internal::make_optional(JsonCppArray(m_value));
         }
 
         return {};
@@ -339,15 +339,15 @@ public:
      * @brief   Optionally return a JsonCppObject instance.
      *
      * If the referenced JsonCpp value is an object, this function will return a
-     * std::optional containing a JsonCppObject instance referencing the
+     * valijson::internal::optional containing a JsonCppObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<JsonCppObject> getObjectOptional() const
+    valijson::internal::optional<JsonCppObject> getObjectOptional() const
     {
         if (m_value.isObject()) {
-            return std::make_optional(JsonCppObject(m_value));
+            return valijson::internal::make_optional(JsonCppObject(m_value));
         }
 
         return {};

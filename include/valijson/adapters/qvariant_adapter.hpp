@@ -3,6 +3,9 @@
  *
  * @brief   Adapter implementation for the QtVariant parser library.
  *
+ * Requires Qt 6 and a C++17-capable build (Qt 6 itself mandates C++17).
+ * Not included in C++11 CI / test configurations.
+ *
  * Include this file in your program to enable support for QtVariant.
  *
  * This file defines the following classes (not in this order):
@@ -25,7 +28,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <utility>
 
@@ -280,18 +283,18 @@ public:
      * @brief   Optionally return a QtVariantArray instance.
      *
      * If the referenced QtVariant value is an array, this function will return
-     * a std::optional containing a QtVariantArray instance referencing the
+     * a valijson::internal::optional containing a QtVariantArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<QtVariantArray> getArrayOptional() const
+    valijson::internal::optional<QtVariantArray> getArrayOptional() const
     {
         if (isArray()) {
-            return std::make_optional(QtVariantArray(m_value));
+            return valijson::internal::make_optional(QtVariantArray(m_value));
         }
 
-        return std::optional<QtVariantArray>();
+        return valijson::internal::optional<QtVariantArray>();
     }
 
     /**
@@ -350,18 +353,18 @@ public:
      * @brief   Optionally return a QtVariantObject instance.
      *
      * If the referenced QtVariant value is an object, this function will return a
-     * std::optional containing a QtVariantObject instance referencing the
+     * valijson::internal::optional containing a QtVariantObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<QtVariantObject> getObjectOptional() const
+    valijson::internal::optional<QtVariantObject> getObjectOptional() const
     {
         if (isObject()) {
-            return std::make_optional(QtVariantObject(m_value));
+            return valijson::internal::make_optional(QtVariantObject(m_value));
         }
 
-        return std::optional<QtVariantObject>();
+        return valijson::internal::optional<QtVariantObject>();
     }
 
     /**

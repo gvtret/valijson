@@ -26,7 +26,7 @@
 #pragma once
 
 #include <cmath>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <nlohmann/json.hpp>
 
@@ -466,15 +466,15 @@ public:
      * @brief   Optionally return a NlohmannJsonArray instance.
      *
      * If the referenced NlohmannJson value is an array, this function will return
-     * a std::optional containing a NlohmannJsonArray instance referencing the
+     * a valijson::internal::optional containing a NlohmannJsonArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<NlohmannJsonArray<ValueType>> getArrayOptional() const
+    valijson::internal::optional<NlohmannJsonArray<ValueType>> getArrayOptional() const
     {
         if (m_value.is_array()) {
-            return std::make_optional(NlohmannJsonArray<ValueType>(m_value));
+            return valijson::internal::make_optional(NlohmannJsonArray<ValueType>(m_value));
         }
 
         return {};
@@ -535,12 +535,12 @@ public:
      * @brief   Optionally return a NlohmannJsonObject instance.
      *
      * If the referenced NlohmannJson value is an object, this function will return a
-     * std::optional containing a NlohmannJsonObject instance referencing the
+     * valijson::internal::optional containing a NlohmannJsonObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<NlohmannJsonObject> getObjectOptional() const;
+    valijson::internal::optional<NlohmannJsonObject> getObjectOptional() const;
 
     /**
      * @brief   Retrieve the number of members in the object
@@ -674,11 +674,11 @@ public:
 };
 
 template <class ValueType>
-std::optional<NlohmannJsonObject>
+valijson::internal::optional<NlohmannJsonObject>
 NlohmannJsonValue<ValueType>::getObjectOptional() const
 {
     if (m_value.is_object()) {
-        return std::make_optional(NlohmannJsonObject(m_value));
+        return valijson::internal::make_optional(NlohmannJsonObject(m_value));
     }
 
     return {};

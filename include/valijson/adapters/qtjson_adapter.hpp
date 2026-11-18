@@ -27,7 +27,7 @@
 
 #include <cmath>
 #include <limits>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <utility>
 
@@ -281,18 +281,18 @@ public:
      * @brief   Optionally return a QtJsonArray instance.
      *
      * If the referenced QtJson value is an array, this function will return
-     * a std::optional containing a QtJsonArray instance referencing the
+     * a valijson::internal::optional containing a QtJsonArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<QtJsonArray> getArrayOptional() const
+    valijson::internal::optional<QtJsonArray> getArrayOptional() const
     {
         if (m_value.isArray()) {
-            return std::make_optional(QtJsonArray(m_value));
+            return valijson::internal::make_optional(QtJsonArray(m_value));
         }
 
-        return std::optional<QtJsonArray>();
+        return valijson::internal::optional<QtJsonArray>();
     }
 
     /**
@@ -351,18 +351,18 @@ public:
      * @brief   Optionally return a QtJsonObject instance.
      *
      * If the referenced QtJson value is an object, this function will return a
-     * std::optional containing a QtJsonObject instance referencing the
+     * valijson::internal::optional containing a QtJsonObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<QtJsonObject> getObjectOptional() const
+    valijson::internal::optional<QtJsonObject> getObjectOptional() const
     {
         if (m_value.isObject()) {
-            return std::make_optional(QtJsonObject(m_value));
+            return valijson::internal::make_optional(QtJsonObject(m_value));
         }
 
-        return std::optional<QtJsonObject>();
+        return valijson::internal::optional<QtJsonObject>();
     }
 
     /**

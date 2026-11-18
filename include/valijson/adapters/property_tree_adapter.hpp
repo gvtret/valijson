@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 
 #include <boost/property_tree/ptree.hpp>
@@ -325,15 +325,15 @@ public:
      * @brief  Return an instance of PropertyTreeArrayAdapter.
      *
      * If the referenced property tree value is an array, this function will
-     * return a std::optional containing a PropertyTreeArray instance
+     * return a valijson::internal::optional containing a PropertyTreeArray instance
      * referencing the array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<PropertyTreeArray> getArrayOptional() const
+    valijson::internal::optional<PropertyTreeArray> getArrayOptional() const
     {
         if (m_array) {
-            return std::make_optional(PropertyTreeArray(*m_array));
+            return valijson::internal::make_optional(PropertyTreeArray(*m_array));
         }
 
         return {};
@@ -379,15 +379,15 @@ public:
      * @brief   Optionally return a PropertyTreeObject instance.
      *
      * If the referenced property tree is an object, this function will return a
-     * std::optional containing a PropertyTreeObject instance referencing the
+     * valijson::internal::optional containing a PropertyTreeObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<PropertyTreeObject> getObjectOptional() const
+    valijson::internal::optional<PropertyTreeObject> getObjectOptional() const
     {
         if (m_object) {
-            return std::make_optional(PropertyTreeObject(*m_object));
+            return valijson::internal::make_optional(PropertyTreeObject(*m_object));
         }
 
         return {};
@@ -478,15 +478,15 @@ private:
     }
 
     /// Reference used if the value is known to be an array
-    // std::optional<const boost::property_tree::ptree &> m_array;
+    // valijson::internal::optional<const boost::property_tree::ptree &> m_array;
     const boost::property_tree::ptree *m_array;
 
     /// Reference used if the value is known to be an object
-    // std::optional<const boost::property_tree::ptree &> m_object;
+    // valijson::internal::optional<const boost::property_tree::ptree &> m_object;
     const boost::property_tree::ptree *m_object;
 
     /// Reference used if the value is known to be a POD type
-    std::optional<std::string> m_value;
+    valijson::internal::optional<std::string> m_value;
 };
 
 /**

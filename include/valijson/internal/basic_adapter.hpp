@@ -3,7 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <sstream>
 
 #include <valijson/internal/adapter.hpp>
@@ -259,7 +259,7 @@ public:
         // effort of constructing an ArrayType instance if the value is
         // definitely an array.
         if (m_value.isArray()) {
-            const std::optional<Array> array = m_value.getArrayOptional();
+            const valijson::internal::optional<Array> array = m_value.getArrayOptional();
             for (const AdapterType element : *array) {
                 if (!fn(element)) {
                     return false;
@@ -277,7 +277,7 @@ public:
         }
 
         if (m_value.isObject()) {
-            const std::optional<Object> object = m_value.getObjectOptional();
+            const valijson::internal::optional<Object> object = m_value.getObjectOptional();
             for (const ObjectMemberType member : *object) {
                 if (!fn(member.first, AdapterType(member.second))) {
                     return false;
@@ -523,7 +523,7 @@ public:
                 other.asString() == asString();
         } else if (isArray()) {
             if (other.isArray() && getArraySize() == other.getArraySize()) {
-                const std::optional<ArrayType> array = m_value.getArrayOptional();
+                const valijson::internal::optional<ArrayType> array = m_value.getArrayOptional();
                 if (array) {
                     ArrayComparisonFunctor fn(*array, strict);
                     return other.applyToArray(fn);
@@ -533,7 +533,7 @@ public:
             }
         } else if (isObject()) {
             if (other.isObject() && other.getObjectSize() == getObjectSize()) {
-                const std::optional<ObjectType> object = m_value.getObjectOptional();
+                const valijson::internal::optional<ObjectType> object = m_value.getObjectOptional();
                 if (object) {
                     ObjectComparisonFunctor fn(*object, strict);
                     return other.applyToObject(fn);
@@ -562,7 +562,7 @@ public:
      */
     ArrayType getArray() const
     {
-        std::optional<ArrayType> arrayValue = m_value.getArrayOptional();
+        valijson::internal::optional<ArrayType> arrayValue = m_value.getArrayOptional();
         if (arrayValue) {
             return *arrayValue;
         }
@@ -671,7 +671,7 @@ public:
      */
     ObjectType getObject() const
     {
-        std::optional<ObjectType> objectValue = m_value.getObjectOptional();
+        valijson::internal::optional<ObjectType> objectValue = m_value.getObjectOptional();
         if (objectValue) {
             return *objectValue;
         }

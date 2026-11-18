@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <yaml-cpp/yaml.h>
 
@@ -273,15 +273,15 @@ class YamlCppValue
      * @brief   Optionally return a YamlCppArray instance.
      *
      * If the referenced YamlCpp value is an array, this function will
-     * return a std::optional containing a YamlCppArray instance
+     * return a valijson::internal::optional containing a YamlCppArray instance
      * referencing the array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<YamlCppArray> getArrayOptional() const
+    valijson::internal::optional<YamlCppArray> getArrayOptional() const
     {
         if (m_value.IsSequence()) {
-            return std::make_optional(YamlCppArray(m_value));
+            return valijson::internal::make_optional(YamlCppArray(m_value));
         }
 
         return {};
@@ -341,15 +341,15 @@ class YamlCppValue
      * @brief   Optionally return a YamlCppObject instance.
      *
      * If the referenced YamlCpp value is an object, this function will
-     * return a std::optional containing a YamlCppObject instance
+     * return a valijson::internal::optional containing a YamlCppObject instance
      * referencing the object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<YamlCppObject> getObjectOptional() const
+    valijson::internal::optional<YamlCppObject> getObjectOptional() const
     {
         if (m_value.IsMap()) {
-            return std::make_optional(YamlCppObject(m_value));
+            return valijson::internal::make_optional(YamlCppObject(m_value));
         }
 
         return {};

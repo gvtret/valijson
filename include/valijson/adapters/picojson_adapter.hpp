@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 
 #ifdef _MSC_VER
@@ -282,15 +282,15 @@ public:
      * @brief   Optionally return a PicoJsonArray instance.
      *
      * If the referenced PicoJson value is an array, this function will return
-     * a std::optional containing a PicoJsonArray instance referencing the
+     * a valijson::internal::optional containing a PicoJsonArray instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<PicoJsonArray> getArrayOptional() const
+    valijson::internal::optional<PicoJsonArray> getArrayOptional() const
     {
         if (m_value.is<picojson::array>()) {
-            return std::make_optional(PicoJsonArray(m_value));
+            return valijson::internal::make_optional(PicoJsonArray(m_value));
         }
 
         return {};
@@ -352,15 +352,15 @@ public:
      * @brief   Optionally return a PicoJsonObject instance.
      *
      * If the referenced PicoJson value is an object, this function will return a
-     * std::optional containing a PicoJsonObject instance referencing the
+     * valijson::internal::optional containing a PicoJsonObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<PicoJsonObject> getObjectOptional() const
+    valijson::internal::optional<PicoJsonObject> getObjectOptional() const
     {
         if (m_value.is<picojson::object>()) {
-            return std::make_optional(PicoJsonObject(m_value));
+            return valijson::internal::make_optional(PicoJsonObject(m_value));
         }
 
         return {};

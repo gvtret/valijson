@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <Poco/JSON/Object.h>
 
@@ -281,18 +281,18 @@ public:
     * @brief   Optionally return a PocoJsonArray instance.
     *
     * If the referenced PocoJson value is an array, this function will return
-    * a std::optional containing a PocoJsonArray instance referencing the
+    * a valijson::internal::optional containing a PocoJsonArray instance referencing the
     * array.
     *
     * Otherwise it will return an empty optional.
     */
-    std::optional<PocoJsonArray> getArrayOptional() const
+    valijson::internal::optional<PocoJsonArray> getArrayOptional() const
     {
         if (m_value.type() == typeid(Poco::JSON::Array::Ptr)) {
-            return std::make_optional(PocoJsonArray(m_value));
+            return valijson::internal::make_optional(PocoJsonArray(m_value));
         }
 
-        return std::optional<PocoJsonArray>();
+        return valijson::internal::optional<PocoJsonArray>();
     }
 
     /**
@@ -349,18 +349,18 @@ public:
     * @brief   Optionally return a PocoJsonObject instance.
     *
     * If the referenced PocoJson value is an object, this function will return a
-    * std::optional containing a PocoJsonObject instance referencing the
+    * valijson::internal::optional containing a PocoJsonObject instance referencing the
     * object.
     *
     * Otherwise it will return an empty optional.
     */
-    std::optional<PocoJsonObject> getObjectOptional() const
+    valijson::internal::optional<PocoJsonObject> getObjectOptional() const
     {
         if (m_value.type() == typeid(Poco::JSON::Object::Ptr)) {
-            return std::make_optional(PocoJsonObject(m_value));
+            return valijson::internal::make_optional(PocoJsonObject(m_value));
         }
 
-        return std::optional<PocoJsonObject>();
+        return valijson::internal::optional<PocoJsonObject>();
     }
 
     /**

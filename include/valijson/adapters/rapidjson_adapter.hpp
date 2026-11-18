@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <iterator>
 #include <type_traits>
@@ -403,15 +403,15 @@ public:
      * @brief   Optionally return a GenericRapidJsonArray instance.
      *
      * If the referenced RapidJson value is an array, this function will return
-     * a std::optional containing a GenericRapidJsonArray instance referencing
+     * a valijson::internal::optional containing a GenericRapidJsonArray instance referencing
      * the array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<GenericRapidJsonArray<ValueType>> getArrayOptional() const
+    valijson::internal::optional<GenericRapidJsonArray<ValueType>> getArrayOptional() const
     {
         if (m_value.IsArray()) {
-            return std::make_optional(GenericRapidJsonArray<ValueType>(m_value));
+            return valijson::internal::make_optional(GenericRapidJsonArray<ValueType>(m_value));
         }
 
         return {};
@@ -481,15 +481,15 @@ public:
      * @brief   Optionally return a GenericRapidJsonObject instance.
      *
      * If the referenced RapidJson value is an object, this function will return
-     * a std::optional containing a GenericRapidJsonObject instance
+     * a valijson::internal::optional containing a GenericRapidJsonObject instance
      * referencing the object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<GenericRapidJsonObject<ValueType>> getObjectOptional() const
+    valijson::internal::optional<GenericRapidJsonObject<ValueType>> getObjectOptional() const
     {
         if (m_value.IsObject()) {
-            return std::make_optional(GenericRapidJsonObject<ValueType>(m_value));
+            return valijson::internal::make_optional(GenericRapidJsonObject<ValueType>(m_value));
         }
 
         return {};
@@ -897,8 +897,8 @@ struct AdapterTraits<valijson::adapters::GenericRapidJsonAdapter<ValueType>>
 
     static std::string adapterName()
     {
-        if constexpr (std::is_same_v<typename ValueType::AllocatorType,
-                rapidjson::CrtAllocator>) {
+        if (std::is_same<typename ValueType::AllocatorType,
+                rapidjson::CrtAllocator>::value) {
             return "GenericRapidJsonAdapter (using CrtAllocator)";
         }
 

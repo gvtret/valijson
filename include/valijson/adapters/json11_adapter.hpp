@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 #include <json11.hpp>
 
@@ -271,15 +271,15 @@ public:
      * @brief   Optionally return a Json11Array instance.
      *
      * If the referenced Json11 value is an array, this function will return
-     * a std::optional containing a Json11Array instance referencing the
+     * a valijson::internal::optional containing a Json11Array instance referencing the
      * array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<Json11Array> getArrayOptional() const
+    valijson::internal::optional<Json11Array> getArrayOptional() const
     {
         if (m_value.is_array()) {
-            return std::make_optional(Json11Array(m_value));
+            return valijson::internal::make_optional(Json11Array(m_value));
         }
 
         return {};
@@ -339,15 +339,15 @@ public:
      * @brief   Optionally return a Json11Object instance.
      *
      * If the referenced Json11 value is an object, this function will return a
-     * std::optional containing a Json11Object instance referencing the
+     * valijson::internal::optional containing a Json11Object instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<Json11Object> getObjectOptional() const
+    valijson::internal::optional<Json11Object> getObjectOptional() const
     {
         if (m_value.is_object()) {
-            return std::make_optional(Json11Object(m_value));
+            return valijson::internal::make_optional(Json11Object(m_value));
         }
 
         return {};

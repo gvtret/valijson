@@ -22,9 +22,19 @@
 // 3. std::istringstream      - fallback if neither of the above are available
 //
 
+// Detect effective C++ dialect. MSVC does not update __cplusplus unless
+// /Zc:__cplusplus is set, so prefer _MSVC_LANG when available.
+#if defined(_MSVC_LANG)
+#  define VALIJSON_DOUBLE_PARSER_CPLUSPLUS _MSVC_LANG
+#else
+#  define VALIJSON_DOUBLE_PARSER_CPLUSPLUS __cplusplus
+#endif
+
 // attempt detection of std::from_chars support
 #ifndef VALIJSON_HAS_STD_FROM_CHARS
-#  if defined(_MSC_VER) && _MSC_VER >= 1915
+#  if VALIJSON_DOUBLE_PARSER_CPLUSPLUS < 201703L
+#    define VALIJSON_HAS_STD_FROM_CHARS 0
+#  elif defined(_MSC_VER) && _MSC_VER >= 1915
 #    define VALIJSON_HAS_STD_FROM_CHARS 1
 #  elif defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 200000
 #    define VALIJSON_HAS_STD_FROM_CHARS 1

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include <optional>
+#include <valijson/internal/optional.hpp>
 #include <string>
 
 #include <boost/json.hpp>
@@ -274,15 +274,15 @@ public:
      * @brief  Return an instance of BoostJsonArrayAdapter.
      *
      * If the referenced Boost.JSON value is an array, this function will
-     * return a std::optional containing a BoostJsonArray instance
+     * return a valijson::internal::optional containing a BoostJsonArray instance
      * referencing the array.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<BoostJsonArray> getArrayOptional() const
+    valijson::internal::optional<BoostJsonArray> getArrayOptional() const
     {
         if (m_value.is_array()) {
-            return std::make_optional(BoostJsonArray(m_value));
+            return valijson::internal::make_optional(BoostJsonArray(m_value));
         }
 
         return {};
@@ -345,24 +345,18 @@ public:
      * @brief   Optionally return a BoostJsonObject instance.
      *
      * If the referenced Boost.JSON is an object, this function will return a
-     * std::optional containing a BoostJsonObject instance referencing the
+     * valijson::internal::optional containing a BoostJsonObject instance referencing the
      * object.
      *
      * Otherwise it will return an empty optional.
      */
-    std::optional<BoostJsonObject> getObjectOptional() const
+    valijson::internal::optional<BoostJsonObject> getObjectOptional() const
     {
         if (m_value.is_object()) {
-            return std::make_optional(BoostJsonObject(m_value));
+            return valijson::internal::make_optional(BoostJsonObject(m_value));
         }
 
-#if __cplusplus >= 201703
-        // std::nullopt is available since C++17
-        return std::nullopt;
-#else
-        // This is the older way to achieve the same result, but potentially at the cost of a compiler warning
-        return {};
-#endif
+        return valijson::internal::nullopt;
     }
 
     /**
