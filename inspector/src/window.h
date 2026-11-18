@@ -3,7 +3,9 @@
 #include <QJsonDocument>
 #include <QMainWindow>
 
-class QJsonDocument;
+#include <yaml-cpp/yaml.h>
+
+class QComboBox;
 class QSplitter;
 class QStatusBar;
 class QTabWidget;
@@ -19,10 +21,16 @@ class Window : public QMainWindow
     Q_OBJECT
 
 public:
+    enum FormatMode {
+        FormatJson = 0,
+        FormatYaml = 1
+    };
+
     explicit Window(QWidget * parent = 0);
 
 public slots:
     void refreshJson();
+    void onFormatChanged(int index);
 
     void showOpenDocumentDialog();
     void showOpenSchemaDialog();
@@ -35,14 +43,20 @@ private:
     QToolBar * createToolBar();
 
     void validate();
+    FormatMode currentFormat() const;
+    QString openFileFilter() const;
 
     QTextEdit * m_documentEditor;
     QTextEdit * m_schemaEditor;
 
     QTextEdit * m_errors;
+    QComboBox * m_formatCombo;
 
     QJsonDocument m_documentJson;
     QJsonDocument m_schemaJson;
+
+    YAML::Node m_documentYaml;
+    YAML::Node m_schemaYaml;
 
     valijson::Schema * m_schema;
 };

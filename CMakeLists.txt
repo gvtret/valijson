@@ -380,6 +380,10 @@ if(valijson_BUILD_EXAMPLES)
         examples/valijson_nlohmann_bundled_test.cpp
     )
 
+    add_executable(yaml_cpp_example
+        examples/yaml_cpp_example.cpp
+    )
+
     if(curlpp_FOUND)
         include_directories(${curlpp_INCLUDE_DIR})
 
@@ -397,4 +401,5 @@ if(valijson_BUILD_EXAMPLES)
     target_link_libraries(check_schema jsoncpp)
     target_link_libraries(object_iteration jsoncpp)
     target_link_libraries(json_pointers)
+    target_link_libraries(yaml_cpp_example yamlcpp)
 endif()

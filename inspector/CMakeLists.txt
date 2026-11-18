@@ -33,6 +33,13 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Widgets REQUIRED)
 
 add_definitions(-DVALIJSON_USE_EXCEPTIONS=1)
 
+# Vendored yaml-cpp (same approach as the main valijson CMakeLists).
+file(GLOB INSPECTOR_YAMLCPP_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/yaml-cpp/src/*.cpp")
+add_library(inspector_yamlcpp STATIC ${INSPECTOR_YAMLCPP_SOURCES})
+target_include_directories(inspector_yamlcpp SYSTEM PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/yaml-cpp/include")
+
 add_executable(${PROJECT_NAME} ${OS_BUNDLE} # Expands to WIN32 or MACOS_BUNDLE depending on OS
     ${SOURCE_FILES} ${META_FILES_TO_INCLUDE} ${RESOURCE_FILES}
 )
@@ -40,4 +47,5 @@ add_executable(${PROJECT_NAME} ${OS_BUNDLE} # Expands to WIN32 or MACOS_BUNDLE d
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Widgets
+    inspector_yamlcpp
 )
